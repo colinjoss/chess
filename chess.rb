@@ -202,7 +202,7 @@ class ChessGameFlow
         game_cycle
     end
 
-    def pick_first  # guides the user to choose which player goes first
+    def pick_first
         loop do
             puts "Who's going first, #{@player1.name} or #{@player2.name}?"
             answer = gets.chomp
@@ -277,14 +277,17 @@ class ChessGameFlow
 
     def checkmate?(token)
         token.color == "white" ? (king = @black_king) : (king = @white_king)
+        x = king.x
+        y = king.y
         return false if king_escape?(king)
+        king.x = x
+        king.y = y
+        king.destination = nil
         return false if token_save_king?(king, token)
         return true
     end
 
     def king_escape?(king)
-        x = king.x
-        y = king.y
         king.moveset.each do |destination|
             king.destination = destination
             other_token = token_on_coord?(king.destination)
@@ -296,9 +299,6 @@ class ChessGameFlow
             next if adjacent_threat?(king) || knight_threat?(king) || horz_vert_threat?(king) || diagonal_threat?(king)
             return false
         end
-        king.x = x
-        king.y = y
-        king.destination = nil
         return true
     end
 
@@ -330,7 +330,6 @@ class ChessGameFlow
             i+=1
             x_axis += coord[0]
             y_axis += coord[1]
-            print([x_axis, y_axis])
             next if i=1
             @all_tokens.each do |token|
                 next if token.color != king.color
