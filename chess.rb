@@ -312,25 +312,25 @@ class ChessGameFlow
     end
 
     def spaces_between_threat(king, threat)
-        x_axis = king.x - threat.x
-        y_axis = king.y - threat.y
+        x_axis = threat.x - king.x
+        y_axis = threat.y - king.y
         coord=nil
         if x_axis == 0 
-            y_axis < 0 ? (coord=[0,-1]) : (coord=[0,1])
+            y_axis < 0 ? (coord=[0,1]) : (coord=[0,-1])
         elsif y_axis == 0
-            x_axis < 0 ? (coord=[-1,0]) : (coord=[1,0])
+            x_axis < 0 ? (coord=[1,0]) : (coord=[-1,0])
         else
-            coord=[-1,-1] if x_axis < 0 && y_axis < 0
-            coord=[-1,1] if x_axis < 0 && y_axis > 0
-            coord=[1,-1]if x_axis > 0 && y_axis < 0
-            coord=[1,1] if x_axis > 0 && y_axis > 0
+            coord=[-1,-1] if x_axis > 0 && y_axis > 0
+            coord=[1,-1] if x_axis < 0 && y_axis > 0
+            coord=[-1,1]if x_axis > 0 && y_axis < 0
+            coord=[1,1] if x_axis < 0 && y_axis < 0
         end
-        i=0
-        while [x_axis, y_axis] != [king.x, king.y]
-            i+=1
+        x_axis = threat.x 
+        y_axis = threat.y 
+        loop do
             x_axis += coord[0]
             y_axis += coord[1]
-            next if i=1
+            break if [x_axis, y_axis] == [king.x, king.y]
             @all_tokens.each do |token|
                 next if token.color != king.color
                 next if token.is_a?(Pawn)
