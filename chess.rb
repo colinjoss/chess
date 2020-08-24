@@ -187,6 +187,7 @@ class ChessGameFlow
         @white_king = nil
         @black_king = nil
         @check = false
+        @escape_check = []
         @board = ChessBoard.new
         @board.show
         self.start_up
@@ -257,16 +258,17 @@ class ChessGameFlow
     def game_cycle
         puts "LET'S PLAY CHESS"
         turn_count = 0
-        game_over = false
-        while !game_over
+        @game_over = false
+        while !@game_over
             turn_count += 1
             player = next_player(turn_count)
-            puts("Your king is in check - you must save your King!")if @check
+            puts("Your king is in check - you must save your King!") if @check
             puts "Your turn, #{player.name}."
             token = validate_move(player)
             add_to_log(token)
             capture_enemy(token)
             @check = false
+            @escape_check = []
             move_token(token)
             checkmate?(token) if @check
             show_captured_by_black
@@ -279,17 +281,25 @@ class ChessGameFlow
         token.color == "white" ? (king = @black_king) : (king = @white_king)
         x = king.x
         y = king.y
-        return false if king_escape?(king)
+        king_escape?(king)
         king.x = x
         king.y = y
         king.destination = nil
-        return false if token_save_king?(king, token)
-        return true
+        capture_threat?(king, token)
+        block_threat?(king, token)
+        return if @escape_check.length > 0
+        game_over(token)
     end
 
     def king_escape?(king)
+            x = king.x
+            y = king.y
         king.moveset.each do |destination|
-            king.destination = destination
+            king.x = x
+            king.y = y
+            king.destination = [king.x + destination[0], king.y + destination[1]]
+            next if king.destination[0] < 1 || king.destination[0] > 8
+            next if king.destination[1] < 1 || king.destination[1] > 8
             other_token = token_on_coord?(king.destination)
             if !!other_token
                 next if same_team?(king, other_token) == true
@@ -297,50 +307,68 @@ class ChessGameFlow
             king.x = king.destination[0]
             king.y = king.destination[1]
             next if adjacent_threat?(king) || knight_threat?(king) || horz_vert_threat?(king) || diagonal_threat?(king)
-            return false
+            @escape_check << [king, king.destination]
         end
-        return true
     end
 
-    def token_save_king?(king, threat)
+    def capture_threat?(king, threat)
         @all_tokens.each do |token|
             next if token.color != king.color
             token.destination = [threat.x, threat.y]
-            return true if move_possible?(token)
+            if token.is_a?(Pawn)
+                @escape_check << [token, token.destination] if pawn_move_possible?(token)
+            elsif token.is_a?(Rook)
+                @escape_check << [token, token.destination] if rook_move_possible?(token)
+            elsif token.is_a?(Knight)
+                @escape_check << [token, token.destination] if knight_move_possible?(token)
+            elsif token.is_a?(Bishop)
+                @escape_check << [token, token.destination] if bishop_move_possible?(token)
+            elsif token.is_a?(Queen)
+                @escape_check << [token, token.destination] if queen_move_possible?(token)
+            end     
         end
-        return spaces_between_threat(king, threat)
     end
 
-    def spaces_between_threat(king, threat)
-        x_axis = threat.x - king.x
-        y_axis = threat.y - king.y
-        coord=nil
-        if x_axis == 0 
-            y_axis < 0 ? (coord=[0,1]) : (coord=[0,-1])
-        elsif y_axis == 0
-            x_axis < 0 ? (coord=[1,0]) : (coord=[-1,0])
-        else
-            coord=[-1,-1] if x_axis > 0 && y_axis > 0
-            coord=[1,-1] if x_axis < 0 && y_axis > 0
-            coord=[-1,1]if x_axis > 0 && y_axis < 0
-            coord=[1,1] if x_axis < 0 && y_axis < 0
+    def block_threat?(king, threat)
+        coord = nil
+        if threat.x == king.x && threat.y != king.y
+            threat.y > king.y ? (coord=[0,-1]) : (coord=[0,1])
+        elsif threat.x != king.x && threat.y == king.y 
+            threat.x > king.x ? (coord=[-1,0]) : (coord=[1,0])
+        elsif threat.x < king.x
+            threat.y > king.y ? (coord=[1,-1]) : (coord=[1,1])
+        elsif threat.x > king.x
+            threat.y > king.y ? (coord=[-1,-1]) : (coord=[-1,1])
         end
         x_axis = threat.x 
         y_axis = threat.y 
         loop do
-            x_axis += coord[0]
-            y_axis += coord[1]
-            break if [x_axis, y_axis] == [king.x, king.y]
+            threat.x += coord[0]
+            threat.y += coord[1]
+            break if [threat.x, threat.y] == [king.x, king.y]
             @all_tokens.each do |token|
                 next if token.color != king.color
-                next if token.is_a?(Pawn)
-                next if token.is_a?(Knight)
-                next if token.is_a?(King)
-                token.destination = [x_axis, y_axis]
-                return true if move_possible?(token)
+                token.destination = [threat.x, threat.y]
+                if token.is_a?(Pawn)
+                    @escape_check << [token, token.destination] if pawn_move_possible?(token)
+                elsif token.is_a?(Rook)
+                    @escape_check << [token, token.destination] if rook_move_possible?(token)
+                elsif token.is_a?(Knight)
+                    @escape_check << [token, token.destination] if knight_move_possible?(token)
+                elsif token.is_a?(Bishop)
+                    @escape_check << [token, token.destination] if bishop_move_possible?(token)
+                elsif token.is_a?(Queen)
+                    @escape_check << [token, token.destination] if queen_move_possible?(token)
+                end
             end
         end
-        return false
+        threat.x = x_axis
+        threat.y = y_axis
+    end
+
+    def game_over(token)
+        puts "Checkmate! Team #{token.color} wins the game!"
+        @game_over = true
     end
 
     def next_player(turn_count)
@@ -459,13 +487,14 @@ class ChessGameFlow
             return false
         end
         token.moveset = [ [-1,1], [1,1], [0,1], [0,2] ] 
-        
         return true
     end
 
     def rook_move_possible?(token)
-        return false unless king_safe?(token)
         return false unless destination_possible?(token)
+        if !@check
+            return false unless king_safe?(token)
+        end
         if token.x < token.destination[0]  # Right
             check = test_horizantal_movement(token, x=1)
         elsif token.x > token.destination[0]  # Left
@@ -479,26 +508,31 @@ class ChessGameFlow
     end
     
     def knight_move_possible?(token)
-        return false unless king_safe?(token)
-        return false unless destination_possible?(token)  # LEFT OFF - ...do something about "color"
+        if !@check
+            return false unless king_safe?(token)
+        end
+        return false unless destination_possible?(token)  
         return true
     end
 
     def bishop_move_possible?(token)
-        return false unless king_safe?(token)
+        if !@check
+            return false unless king_safe?(token)
+        end
         return false unless destination_possible?(token)
         if token.x < token.destination[0]  # Diagonal-right
-            check = test_diagonal_movement(token, x=1, y=1) if token.y < token.destination[1]
-            check = test_diagonal_movement(token, x=1, y=-1) if token.y > token.destination[1]
+            return test_diagonal_movement(token, x=1, y=1) if token.y < token.destination[1]
+            return test_diagonal_movement(token, x=1, y=-1) if token.y > token.destination[1]
         else  # Diagonal-left
-            check = test_diagonal_movement(token, x=-1, y=1) if token.y < token.destination[1]
-            check = test_diagonal_movement(token, x=-1, y=-1) if token.y > token.destination[1]
+            return test_diagonal_movement(token, x=-1, y=1) if token.y < token.destination[1]
+            return test_diagonal_movement(token, x=-1, y=-1) if token.y > token.destination[1]
         end
-        return check
     end
 
     def queen_move_possible?(token)
-        return false unless king_safe?(token)
+        if !@check
+            return false unless king_safe?(token)
+        end
         return false unless destination_possible?(token)
         if token.x < token.destination[0] # Moving right, x+1
             if token.y == token.destination[1] # Stable y, horizantal movement
@@ -574,6 +608,7 @@ class ChessGameFlow
     end
 
     def adjacent_threat?(king, token=nil)
+
         adjacent = [ [1,0], [1,1], [1,0], [1,-1], [0,-1], [-1,-1], [-1,0], [-1,1] ]
         adjacent.each do |move|
             if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(King)
@@ -594,6 +629,9 @@ class ChessGameFlow
     end
 
     def knight_threat?(king, token=nil)
+
+
+
         knight = [ [1,2], [2,1], [2, -1], [1, -2], [-2, 1], [-1, 2], [-1, -2], [-2, -1] ]
         knight.each do |move|
             if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Knight)
@@ -604,6 +642,11 @@ class ChessGameFlow
     end
 
     def horz_vert_threat?(king, token=nil)
+        # Returns true if the move has been pre-determined to be a block/save.
+        if token != nil
+            return true if @escape_check.include?([token, token.destination])
+        end
+
         rook_up = [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7] ]
         rook_right = [ [1,0], [2,0], [3,0], [4,0], [5,0], [6,0], [7,0] ]
         rook_down = [ [0,-1], [0,-2], [0,-3], [0,-4], [0,-5], [0,-6], [0,-7] ]
@@ -611,12 +654,13 @@ class ChessGameFlow
         rook_moves = [rook_up, rook_right, rook_down, rook_left]
         rook_moves.each do |direction|
             direction.each do |move|
-                # if token == king, then don't skip!
+                # Skips if coordinate is off the board
                 next if (king.x + move[0]) > 8 || (king.x + move[0]) < 1
                 next if (king.y + move[1]) > 8 || (king.y + move[1]) < 1
-                if @board.chess[king.x + move[0]][king.y + move[1]] == token
-                    token.color == king.color ? (next) : (token)
-                end
+                # Passes over token if the token isn't on the king's side
+                # if @board.chess[king.x + move[0]][king.y + move[1]] == token
+                #     token.color == king.color ? (next) : (token)
+                # end
                 next if @board.chess[king.x + move[0]][king.y + move[1]] == token
                 next if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Tile)
                 break if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Pawn)
@@ -629,6 +673,10 @@ class ChessGameFlow
     end
 
     def diagonal_threat?(king, token=nil)
+        if token != nil
+            return true if @escape_check.include?([token, token.destination])
+        end
+
         diagonal_top_right = [1,1], [2,2], [3,3], [4,4], [5,5], [6,6], [7,7]
         diagonal_bot_right = [1,-1], [2,-2], [3,-3], [4,-4], [5,-5], [6,-6], [7,-7]
         diagonal_bot_left = [-1,-1], [-2,-2], [-3,-3], [-4,-4], [-5,-5], [-6,-6], [-7,-7]
@@ -638,9 +686,9 @@ class ChessGameFlow
             direction.each do |move|
                 next if (king.x + move[0]) > 8 || (king.x + move[0]) < 1
                 next if (king.y + move[1]) > 8 || (king.y + move[1]) < 1
-                if @board.chess[king.x + move[0]][king.y + move[1]] == token
-                    token.color == king.color ? (next) : (token)
-                end
+                # if @board.chess[king.x + move[0]][king.y + move[1]] == token
+                #     token.color == king.color ? (next) : (token)
+                # end
                 next if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Tile)
                 break if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Pawn)
                 break if @board.chess[king.x + move[0]][king.y + move[1]].is_a?(Knight)
