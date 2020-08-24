@@ -736,13 +736,13 @@ class ChessGameFlow
             token.capturing.y = -1
             @captured_by_white << token.capturing
             @all_tokens.delete(token.capturing)
-            print "Team White has captured a #{token.capturing.name}!"
+            puts "Team White has captured a #{token.capturing.name}!"
         elsif token.capturing.color = "white"
             token.capturing.x = -1
             token.capturing.y = -1
             @captured_by_black << token.capturing
             @all_tokens.delete(token.capturing)
-            print "Team Black has captured a #{token.capturing.name}!"
+            puts "Team Black has captured a #{token.capturing.name}!"
         end
         @move_log << "#{token.player.name} captured a #{token.capturing.name} with a #{token.name}."
         token.capturing = nil
