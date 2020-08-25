@@ -1,8 +1,4 @@
-class Token
-    def initialize(); end
-end
-
-class Pawn < Token
+class Pawn
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset
     def initialize(player, color, x, y)
         @name = "pawn"
@@ -17,7 +13,7 @@ class Pawn < Token
     end
 end
 
-class Rook < Token
+class Rook
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset
     def initialize(player, color, x, y)
         @name = "rook"
@@ -37,7 +33,7 @@ class Rook < Token
     end
 end
 
-class Knight < Token
+class Knight
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset
     def initialize(player, color, x, y)
         @name = "knight"
@@ -52,7 +48,7 @@ class Knight < Token
     end
 end
 
-class Bishop < Token
+class Bishop
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset
     def initialize(player, color, x, y)
         @name = "bishop"
@@ -72,7 +68,7 @@ class Bishop < Token
     end
 end
 
-class Queen < Token
+class Queen
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset
     def initialize(player, color, x, y)
         @name = "queen"
@@ -96,7 +92,7 @@ class Queen < Token
     end
 end
 
-class King < Token
+class King
     attr_accessor :name, :player, :color, :uni, :x, :y, :destination, :capturing, :moveset, :check
     def initialize(player, color, x, y)
         @name = "king"
