@@ -488,6 +488,7 @@ class ChessGameFlow
         elsif [token.x + token.moveset[2][0], token.y + token.moveset[2][1]] == token.destination
             return false if !!other_token
         elsif [token.x + token.moveset[3][0], token.y + token.moveset[3][1]] == token.destination
+            return false unless token.y == 2 || token.y == 7
             return false if !!other_token
             beneath = [token.destination[0], token.destination[1] - token.moveset[0][1]]
             return false if !!token_on_coord?(beneath)
