@@ -375,7 +375,7 @@ class ChessGameFlow
 
     def validate_move(player, move=nil, token=nil, start_position = false, destination = false, possible = false)
         loop do
-            puts("Something went wrong...") unless move.nil?
+            puts("*** Double check your move!") unless move.nil?
             move = gets.chomp
             show_move_log if move == "log"
             next if !!move.match(/[\s]/) == false
@@ -409,9 +409,18 @@ class ChessGameFlow
     def interpret_coordinate(user_input)
         # Returns two-element array coordinate.
         coordinate = user_input.split("")
-        return false unless coordinate.length == 2
-        return false unless !!coordinate[0].match(/[a-h]/i)
-        return false unless !!coordinate[1].match(/[1-8]/i)
+        unless coordinate.length == 2
+            puts "*** Your coordinates needs to be one letter and one number!"
+            return false
+        end
+        unless !!coordinate[0].match(/[a-h]/i)
+            puts "*** The first part of a coordinate needs to be a letter!"
+            return false 
+        end
+        unless !!coordinate[1].match(/[1-8]/i)
+            puts "*** The second part of a coordinate needs to be a number!"
+            return false 
+        end
         letter_translator = {
             "a" => 1,
             "b" => 2,
@@ -434,7 +443,11 @@ class ChessGameFlow
         ["pawn", "rook", "knight", "bishop", "queen", "king"].each do |name|
              match = true if user_input == name
         end
-        return false unless match
+        unless match
+            puts "*** Your token name doesn't match a chess piece!"
+            puts "*** Please enter: KING  QUEEN  BISHOP  KNIGHT  ROOK  PAWN"
+            return false 
+        end
         @all_tokens.each do |token|
             next unless token.player == player
             next unless token.color == player.color
@@ -444,6 +457,8 @@ class ChessGameFlow
             token.destination = destination
             return token
         end
+        puts "*** Something's wrong...it might be the wrong player's turn, or the"
+        puts "*** token you're trying to access might be in a slightly different spot!"
         return false
     end
 
@@ -470,24 +485,43 @@ class ChessGameFlow
 
     def pawn_move_possible?(token)
         if !@check
-            return false unless king_safe?(token)
+            unless king_safe?(token)
+                puts "*** If you do that, your king will be in danger!"
+                return false
+            end
         end
         token.moveset = [ [1,-1], [-1,-1], [0,-1], [0,-2] ] if token.color == "black"
         other_token = token_on_coord?(token.destination)
         if [token.x + token.moveset[0][0], token.y + token.moveset[0][1]] == token.destination || 
         [token.x + token.moveset[1][0], token.y + token.moveset[1][1]] == token.destination
             if !!other_token
-                return false if same_team?(token, other_token)
+                if same_team?(token, other_token)
+                    puts "*** A piece on your team occupies that space!"
+                    return false 
+                end
             else
+                puts "*** Pawns can only move like that to capture!"
                 return false
             end
         elsif [token.x + token.moveset[2][0], token.y + token.moveset[2][1]] == token.destination
-            return false if !!other_token
+            if !!other_token
+                puts "*** Another piece occupies that space!"
+                return false 
+            end
         elsif [token.x + token.moveset[3][0], token.y + token.moveset[3][1]] == token.destination
-            return false unless token.y == 2 || token.y == 7
-            return false if !!other_token
+            unless token.y == 2 || token.y == 7
+                puts "*** You can only move like that if the pawn is in its starting position!"
+                return false 
+            end
+            if !!other_token
+                puts "*** Another piece occupies that spot!"
+                return false 
+            end
             beneath = [token.destination[0], token.destination[1] - token.moveset[0][1]]
-            return false if !!token_on_coord?(beneath)
+            if !!token_on_coord?(beneath)
+                puts "*** You can't jump over other pieces with a pawn!"
+                return false 
+            end
         else
             return false
         end
@@ -496,35 +530,53 @@ class ChessGameFlow
     end
 
     def rook_move_possible?(token)
-        return false unless destination_possible?(token)
+        unless destination_possible?(token)
+            puts "*** That move isn't possible for this piece!"
+            return false 
+        end
         if !@check
-            return false unless king_safe?(token)
+            unless king_safe?(token)
+                puts "*** If you do that, your king will be in danger!"
+                return false
+            end
         end
         if token.x < token.destination[0]  # Right
-            check = test_horizantal_movement(token, x=1)
+            return test_horizantal_movement(token, x=1)
         elsif token.x > token.destination[0]  # Left
-            check = test_horizantal_movement(token, x=-1)
+            return test_horizantal_movement(token, x=-1)
         elsif token.y < token.destination[1]  # Up
-            check = test_vertical_movement(token, y=1)
+            return test_vertical_movement(token, y=1)
         elsif token.y > token.destination[1]  # Down
-            check = test_vertical_movement(token, y=-1)
+            return test_vertical_movement(token, y=-1)
         end
         return check
     end
     
     def knight_move_possible?(token)
         if !@check
-            return false unless king_safe?(token)
+            unless king_safe?(token)
+                puts "*** If you do that, your king will be in danger!"
+                return false
+            end
         end
-        return false unless destination_possible?(token)  
+        unless destination_possible?(token)
+            puts "*** That move isn't possible for this piece!"
+            return false 
+        end 
         return true
     end
 
     def bishop_move_possible?(token)
         if !@check
-            return false unless king_safe?(token)
+            unless king_safe?(token)
+                puts "*** If you do that, your king will be in danger!"
+                return false
+            end
         end
-        return false unless destination_possible?(token)
+        unless destination_possible?(token)
+            puts "*** That move isn't possible for this piece!"
+            return false 
+        end
         if token.x < token.destination[0]  # Diagonal-right
             return test_diagonal_movement(token, x=1, y=1) if token.y < token.destination[1]
             return test_diagonal_movement(token, x=1, y=-1) if token.y > token.destination[1]
@@ -536,28 +588,34 @@ class ChessGameFlow
 
     def queen_move_possible?(token)
         if !@check
-            return false unless king_safe?(token)
+            unless king_safe?(token)
+                puts "*** If you do that, your king will be in danger!"
+                return false
+            end
         end
-        return false unless destination_possible?(token)
+        unless destination_possible?(token)
+            puts "*** That move isn't possible for this piece!"
+            return false 
+        end
         if token.x < token.destination[0] # Moving right, x+1
             if token.y == token.destination[1] # Stable y, horizantal movement
-                check = test_horizantal_movement(token, x=1)
+                return test_horizantal_movement(token, x=1)
             else # Diagonal-right movement
-                check = test_diagonal_movement(token, x=1, y=1) if token.y < token.destination[1]
-                check = test_diagonal_movement(token, x=1, y=-1) if token.y > token.destination[1]
+                return test_diagonal_movement(token, x=1, y=1) if token.y < token.destination[1]
+                return test_diagonal_movement(token, x=1, y=-1) if token.y > token.destination[1]
             end
         elsif token.x > token.destination[0] # Moving left, x-1
             if token.y == token.destination[1] # Stable y, horizantal movement
-                check = test_horizantal_movement(token, x=-1)
+                return test_horizantal_movement(token, x=-1)
             else # Diagonal-left movement
-                check = test_diagonal_movement(token, x=-1, y=1) if token.y < token.destination[1]
-                check = test_diagonal_movement(token, x=-1, y=-1) if token.y > token.destination[1]
+                return test_diagonal_movement(token, x=-1, y=1) if token.y < token.destination[1]
+                return test_diagonal_movement(token, x=-1, y=-1) if token.y > token.destination[1]
             end
         else # Vertical movement only
-            check = test_vertical_movement(token, y=1) if token.y < token.destination[1]
-            check = test_vertical_movement(token, y=-1) if token.y > token.destination[1]
+            return test_vertical_movement(token, y=1) if token.y < token.destination[1]
+            return test_vertical_movement(token, y=-1) if token.y > token.destination[1]
         end
-        return check
+        return false
     end
 
     def test_horizantal_movement(token, x, current=nil)
@@ -593,7 +651,10 @@ class ChessGameFlow
 
     def king_move_possible?(token)
         return false unless king_safe?(token)
-        return false unless destination_possible?(token)
+        unless destination_possible?(token)
+            puts "*** That move isn't possible for this piece!"
+            return false 
+        end
         return true
     end
 
